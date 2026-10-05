@@ -1,0 +1,20 @@
+{
+  "name": "smart-escape",
+  "version": "1.0.0",
+  "description": "Smart Escape — Interactive Evacuation Route Simulator (AI DevFest Competition)",
+  "type": "module",
+  "scripts": {
+    "start": "npx -y serve . -p 3000",
+    "dev": "npx -y serve . -p 3000",
+    "test": "node test_router.mjs"
+  },
+  "keywords": [
+    "evacuation-simulator",
+    "dijkstra",
+    "graph-routing",
+    "ai-devfest",
+    "emergency-navigation"
+  ],
+  "author": "AI DevFest Participant",
+  "license": "MIT"
+}

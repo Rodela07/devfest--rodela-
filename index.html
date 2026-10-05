@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Escape — Interactive Evacuation Route Simulator</title>
+  <meta name="description" content="AI DevFest Competition - High Performance Interactive Browser-based Building Evacuation Route Simulator with Dynamic Shortest-Path Rerouting and Bilingual UI.">
+
+  <!-- Modern Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Background 3D Dotted Surface Particle Canvas (Prompt Template & Aesthetic) -->
+  <canvas id="dotted-surface-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- ====================================================================
+         HEADER
+         ==================================================================== -->
+    <header class="app-header glass-card">
+      <div class="brand-section">
+        <div class="brand-logo-icon">⚡</div>
+        <div class="brand-titles">
+          <h1>
+            <span data-i18n="app_title">Smart Escape</span>
+            <span class="badge-devfest" data-i18n="badge_competition">AI DevFest 2026</span>
+          </h1>
+          <div class="brand-subtitle" data-i18n="app_subtitle">Interactive Evacuation Route Simulator</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live Automated Compliance Test Suite Button -->
+        <button id="btn-run-tests" class="btn btn-primary" data-i18n="btn_run_tests">
+          <span>🧪</span> <span>Run Test Suite</span>
+        </button>
+
+        <!-- Evacuation Walkthrough Player -->
+        <button id="btn-simulation-walkthrough" class="btn" data-i18n="btn_walkthrough">
+          <span>▶</span> <span>Simulate Evacuation</span>
+        </button>
+
+        <!-- Reset Button -->
+        <button id="btn-reset-initial" class="btn btn-danger-outline" data-i18n="btn_reset">
+          <span>↺</span> <span>Reset Initial State</span>
+        </button>
+
+        <!-- Export PNG -->
+        <button id="btn-export-png" class="btn" data-i18n="btn_export_png">
+          <span>📷</span> <span>Export Map PNG</span>
+        </button>
+
+        <!-- Audio FX Toggle -->
+        <button id="btn-toggle-audio" class="btn" data-i18n="btn_audio_on">
+          Sound Effects: ON
+        </button>
+
+        <!-- High Contrast Mode Toggle -->
+        <button id="btn-toggle-contrast" class="btn btn-icon-only" title="High Contrast Mode">
+          🌓
+        </button>
+
+        <!-- Bilingual Language Switcher (English / বাংলা) -->
+        <div class="lang-toggle-group">
+          <button class="lang-btn active" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="bn">বাংলা</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         MAIN WORKSPACE DASHBOARD
+         ==================================================================== -->
+    <main class="main-dashboard">
+      <!-- Left Control Panel -->
+      <aside class="sidebar-controls">
+        <!-- 1. Dataset Management Card -->
+        <section class="glass-card panel-section">
+          <div class="panel-header">
+            <h2 data-i18n="panel_dataset">
+              <span class="icon">📁</span> Building Dataset
+            </h2>
+          </div>
+
+          <div class="file-dropzone-row">
+            <input type="file" id="file-input" class="file-input-hidden" accept=".json,application/json">
+            <button id="btn-import-file" class="btn btn-primary" style="width: 100%;" data-i18n="import_json_btn">
+              <span>📤</span> <span>Import JSON File</span>
+            </button>
+          </div>
+
+          <div class="preset-select-row">
+            <label for="preset-selector" style="font-size: 0.76rem; color: var(--text-muted);" data-i18n="choose_preset">
+              Load Preset Scenario:
+            </label>
+            <select id="preset-selector" class="custom-select">
+              <option value="sample" data-i18n="preset_sample">East Annex (Official Sample)</option>
+              <option value="tiebreak" data-i18n="preset_tiebreak">Research Facility (Tie-Break Test)</option>
+              <option value="complex" data-i18n="preset_complex">Metropolis Center (Complex Grid)</option>
+              <option value="disconnected" data-i18n="preset_disconnected">Isolated Annex (Disconnected)</option>
+            </select>
+          </div>
+
+          <div class="building-meta-badge">
+            <div class="meta-row">
+              <span class="meta-label" data-i18n="label_building_name">Building:</span>
+              <span id="meta-building-name" class="meta-value">--</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label" data-i18n="label_validation_status">Validation:</span>
+              <span id="meta-validation-status" class="status-pill valid">VALID SCHEMA</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label"><span data-i18n="nodes_count">Nodes</span> / <span data-i18n="edges_count">Corridors</span>:</span>
+              <span class="meta-value"><span id="meta-nodes-count">0</span> / <span id="meta-edges-count">0</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Starting Location Card -->
+        <section class="glass-card panel-section">
+          <div class="panel-header">
+            <h2 data-i18n="panel_start">
+              <span class="icon">📍</span> Starting Location
+            </h2>
+          </div>
+          <div class="start-selector-box">
+            <div class="start-hint-text" data-i18n="start_hint">
+              (Only unblocked rooms and junctions can be selected)
+            </div>
+            <div id="start-pills-container" class="start-pills-grid">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Hazard Management Station Card -->
+        <section class="glass-card panel-section">
+          <div class="panel-header">
+            <h2 data-i18n="panel_hazards">
+              <span class="icon">⚠️</span> Hazard Management
+            </h2>
+            <button id="btn-clear-hazards" class="btn" style="padding: 3px 8px; font-size: 0.72rem;" data-i18n="btn_clear_hazards">
+              Clear All
+            </button>
+          </div>
+
+          <div class="hazard-tabs">
+            <button class="hazard-tab-btn active" data-tab="nodes" data-i18n="hazard_tab_nodes">Rooms & Junctions</button>
+            <button class="hazard-tab-btn" data-tab="edges" data-i18n="hazard_tab_edges">Corridors</button>
+            <button class="hazard-tab-btn" data-tab="exits" data-i18n="hazard_tab_exits">Exits</button>
+          </div>
+
+          <div id="hazard-items-list" class="hazard-items-list">
+            <!-- Dynamically Populated -->
+          </div>
+
+          <div class="hazard-summary-bar">
+            <span><span data-i18n="hazard_nodes_blocked">Blocked Nodes</span>: <strong id="count-blocked-nodes" style="color: var(--hazard-crimson);">0</strong></span>
+            <span><span data-i18n="hazard_edges_blocked">Blocked Corridors</span>: <strong id="count-blocked-edges" style="color: var(--hazard-amber);">0</strong></span>
+            <span><span data-i18n="hazard_exits_closed">Closed Exits</span>: <strong id="count-closed-exits" style="color: var(--neon-purple);">0</strong></span>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Center / Right Interactive Map & Graph Viewport -->
+      <section class="glass-card graph-viewport-panel">
+        <div class="map-top-bar">
+          <div class="map-building-title">
+            <span style="font-size: 1.2rem;">🏢</span>
+            <span id="display-building-name" class="building-display-name">Building Map</span>
+          </div>
+
+          <div class="map-floating-controls">
+            <button id="btn-zoom-in" class="btn btn-icon-only" title="Zoom In">+</button>
+            <button id="btn-zoom-out" class="btn btn-icon-only" title="Zoom Out">−</button>
+            <button id="btn-zoom-fit" class="btn" data-i18n="zoom_fit">Fit Map</button>
+            <button id="btn-zoom-reset" class="btn" data-i18n="zoom_reset">Reset View</button>
+          </div>
+        </div>
+
+        <div class="svg-canvas-wrapper">
+          <svg id="building-graph-svg" xmlns="http://www.w3.org/2000/svg">
+            <!-- SVG Map rendered by renderer.js -->
+          </svg>
+        </div>
+
+        <div class="map-bottom-bar">
+          <div class="map-hint" data-i18n="graph_hint">
+            💡 Click any room/junction to set as Start. Click items in hazard list or nodes to toggle obstacles.
+          </div>
+
+          <div class="map-legend">
+            <div class="legend-item"><div class="legend-dot room"></div> <span data-i18n="legend_room">Room</span></div>
+            <div class="legend-item"><div class="legend-dot junction"></div> <span data-i18n="legend_junction">Junction</span></div>
+            <div class="legend-item"><div class="legend-dot exit"></div> <span data-i18n="legend_exit">Exit</span></div>
+            <div class="legend-item"><div class="legend-dot route"></div> <span data-i18n="legend_route">Route</span></div>
+            <div class="legend-item"><div class="legend-dot blocked"></div> <span data-i18n="legend_blocked">Blocked</span></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ====================================================================
+         BOTTOM ROUTE TELEMETRY & COMMAND STATION
+         ==================================================================== -->
+    <footer class="glass-card telemetry-station">
+      <div class="telemetry-header-row">
+        <div id="route-status-banner" class="route-status-banner status-FOUND">
+          OPTIMAL ROUTE COMPUTED
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted);">
+          Algorithm: <strong style="color: var(--neon-cyan); font-family: var(--font-mono);">Dijkstra + Lexicographical Tie-Break</strong>
+        </div>
+      </div>
+
+      <div class="telemetry-cards-grid">
+        <div class="metric-card">
+          <span class="metric-label" data-i18n="card_start_node">Origin Node</span>
+          <span id="telemetry-start-node" class="metric-val highlight-cyan">--</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label" data-i18n="card_destination_exit">Evacuation Exit</span>
+          <span id="telemetry-exit-node" class="metric-val highlight-emerald">--</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label" data-i18n="card_total_cost">Total Route Cost</span>
+          <span id="telemetry-total-cost" class="metric-val">--</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label" data-i18n="card_total_hops">Corridor Hops</span>
+          <span id="telemetry-total-hops" class="metric-val">--</span>
+        </div>
+      </div>
+
+      <div class="sequence-container">
+        <div class="sequence-header">
+          <span data-i18n="route_sequence_label">Evacuation Node Sequence:</span>
+          <span data-i18n="route_step_breakdown">Step Cost Breakdown:</span>
+        </div>
+        <div id="route-sequence-flow" class="sequence-flow">
+          <!-- Dynamically populated sequence breadcrumbs -->
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ====================================================================
+       MODAL: COMPLIANCE TEST SUITE RUNNER
+       ==================================================================== -->
+  <div id="modal-test-suite" class="modal-overlay">
+    <div class="modal-box glass-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_tests_title">
+          <span>🧪</span> AI DevFest Automated Compliance Suite
+        </h3>
+        <button id="btn-close-tests" class="btn btn-icon-only">✕</button>
+      </div>
+      <div class="modal-content">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" data-i18n="modal_tests_desc">
+          Verifies all 5 mandatory competition specifications plus tie-breaking and edge cases in real-time.
+        </p>
+        <div id="test-results-list" class="test-results-list">
+          <!-- Dynamic test results -->
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="btn-exec-all-tests" class="btn btn-primary" data-i18n="test_run_all">Run All Test Scenarios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODAL: DATASET VALIDATION ERROR
+       ==================================================================== -->
+  <div id="modal-validation-error" class="modal-overlay">
+    <div class="modal-box glass-card" style="border-color: var(--border-danger);">
+      <div class="modal-header">
+        <h3 style="color: var(--hazard-crimson);" data-i18n="validation_error_title">
+          <span>⚠️</span> Dataset Validation Errors Detected
+        </h3>
+        <button id="btn-close-val-modal" class="btn btn-icon-only">✕</button>
+      </div>
+      <div class="modal-content">
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="validation_error_desc">
+          The uploaded file could not be loaded because it violated the Smart Escape schema rules:
+        </p>
+        <ul id="validation-error-list" style="padding-left: 20px; font-size: 0.8rem; font-family: var(--font-mono);">
+          <!-- Dynamic validation error list -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Bootstrap Module -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
